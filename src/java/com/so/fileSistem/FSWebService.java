@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.jws.WebService;
 import javax.jws.WebMethod;
-import javax.jws.WebParam;
 
 /**
  *
@@ -22,9 +21,14 @@ import javax.jws.WebParam;
 @WebService(serviceName = "FSWebService")
 public class FSWebService {
     
-    ArrayList<Node> arbol = new ArrayList<Node>();
+    ArrayList<Node> arbol;
     
-    ArrayList<String> ruta = new ArrayList<String>();
+    ArrayList<String> ruta;
+
+    public FSWebService() {
+        this.arbol = new ArrayList<>();
+        this.ruta = new ArrayList<>();
+    }
     
     
     private int createPath(String nombre){
@@ -46,6 +50,7 @@ public class FSWebService {
         for (int i = 1; i < rutas.length -1 ; i++) {
             nuevaRuta += "-" + rutas[i];
         }
+        ruta.set(pos,nuevaRuta);
         
     }
    
@@ -72,17 +77,14 @@ public class FSWebService {
             if(rutaActual.length>1){
                 
                 
-                for (int i = 1; i < rutaActual.length; i++) {
-                    List<Node> hijos = padre.getChildren();
-                    System.out.println("padre = "+padre.getId());
-                    for (int j = 0; j < hijos.size(); j++) {
-                        
-                        if(hijos.get(j).getId().equals(rutaActual[i])){
-                            return hijos.get(j);
-                        }
+                List<Node> hijos = padre.getChildren();
+                for (int i = 0; i < hijos.size(); i++) {
+                    Node hijoActual = hijos.get(i);
+                    if(hijoActual.getId().equals(rutaActual[i+1])){
+                        return findNodeHelper(removeFirstDirPath(rutaActual),hijoActual);
                     }
                 }
-                
+                return null;
                 
             }else{
                 return padre;
@@ -92,17 +94,47 @@ public class FSWebService {
         }
         return null;
     }
+    private String removeFirstDirPath(String[] pRuta){
+        String nuevaRuta = "";
+        nuevaRuta += pRuta[1];
+        for (int i = 2; i < pRuta.length; i++) {
+            nuevaRuta += "-"+pRuta[i];
+        }
+        return nuevaRuta;
+    }
+    
+    private Node findNodeHelper(String pRuta,Node nodoActual){
+        String rutaActual[] =  pRuta.split("-");
+         if(nodoActual.getId().equals(rutaActual[0])){
+            if(rutaActual.length>1){
+                List<Node> hijos = nodoActual.getChildren();
+                for (int i = 1; i < rutaActual.length; i++) {
+                    Node hijoActual = hijos.get(i-1);
+                    if(hijoActual.getId().equals(rutaActual[i])){
+                        return findNodeHelper(removeFirstDirPath(rutaActual),hijoActual);
+                    }
+                }
+                return null;           
+            }else{
+                return nodoActual;
+            }
+        }else{
+            System.out.println("SON DIFERENTES");
+            return null;
+        }
+        
+    }
     
  
-    /************OPERACIONES*/
+    //************OPERACIONES*/
     
     
     //se crea el disco
     @WebMethod(operationName = "CRT")
     public int CRT(int sectores,int tamsec, String nombreraiz) throws IOException, Exception {
         
-        String ruta = "C:\\Users\\jruiz\\Desktop\\"+nombreraiz + ".txt";
-        File archivo = new File(ruta);
+        String rutaFile = "C:\\Users\\jruiz\\Desktop\\"+nombreraiz + ".txt";
+        File archivo = new File(rutaFile);
         BufferedWriter bw;
         
         //crea el archivo
@@ -204,14 +236,7 @@ public class FSWebService {
         return getClientRoot(pos).printTree("-");
     }
     
-    /*********/
-    
-    
-    @WebMethod(operationName = "square")
-    public double square(double num) {
-        return num-num;
-    }
-    
+       
     
     
 }
