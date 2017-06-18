@@ -7,10 +7,14 @@ package com.so.fileSistem;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.jws.WebService;
 import javax.jws.WebMethod;
 
@@ -20,7 +24,7 @@ import javax.jws.WebMethod;
  */
 @WebService(serviceName = "FSWebService")
 public class FSWebService {
-    
+    final String DISK_PATH = "C:\\Users\\jruiz\\Desktop\\";
     ArrayList<Node> arbol;
     
     ArrayList<String> ruta;
@@ -78,9 +82,10 @@ public class FSWebService {
                 
                 
                 List<Node> hijos = padre.getChildren();
+                String nombreNodoABuscar = rutaActual[1];
                 for (int i = 0; i < hijos.size(); i++) {
                     Node hijoActual = hijos.get(i);
-                    if(hijoActual.getId().equals(rutaActual[i+1])){
+                    if(hijoActual.getId().equals(nombreNodoABuscar)){
                         return findNodeHelper(removeFirstDirPath(rutaActual),hijoActual);
                     }
                 }
@@ -108,9 +113,10 @@ public class FSWebService {
          if(nodoActual.getId().equals(rutaActual[0])){
             if(rutaActual.length>1){
                 List<Node> hijos = nodoActual.getChildren();
-                for (int i = 1; i < rutaActual.length; i++) {
-                    Node hijoActual = hijos.get(i-1);
-                    if(hijoActual.getId().equals(rutaActual[i])){
+                String nombreNodoABuscar = rutaActual[1];
+                for (int i = 0; i < hijos.size(); i++) {
+                    Node hijoActual = hijos.get(i);
+                    if(hijoActual.getId().equals(nombreNodoABuscar)){
                         return findNodeHelper(removeFirstDirPath(rutaActual),hijoActual);
                     }
                 }
@@ -125,6 +131,161 @@ public class FSWebService {
         
     }
     
+    
+        
+    private int bestFit(int pos, int tamanoContenido){
+        File file = new File("C:\\Users\\jruiz\\Desktop\\"+ getClientRoot(pos).getId()+ ".txt");
+        RandomAccessFile access;
+        String disk;
+        try {
+            access = new RandomAccessFile(file, "rw");
+            disk = access.readLine();
+            
+            String diskSegments[] = disk.split("-");
+            int totalSegmentos = diskSegments.length;
+            int tamanoSegmento = diskSegments[0].length();
+            
+            
+            String segmentoVacio = "";
+            for (int i = 0; i < tamanoSegmento; i++) {
+                segmentoVacio += "0";
+            }
+            int segmentosVacios = 0;
+            
+            int bestSegment = -1;
+            int bestSize = 999;
+            int candidato = 0;
+            int tamanoCandidato = 999;
+            
+            for (int i = 0; i < diskSegments.length ; i++) {
+                if(diskSegments[i].equals(segmentoVacio)){
+                    if(segmentosVacios == 0){
+                        candidato = i;
+                    }
+                    segmentosVacios += 1;
+                }else{
+                    tamanoCandidato = segmentosVacios * tamanoSegmento;
+                    if(tamanoCandidato < bestSize && tamanoCandidato > tamanoContenido){
+                        bestSize = tamanoCandidato;
+                        bestSegment = candidato;
+                    }
+                    segmentosVacios = 0;
+                }
+            }
+            tamanoCandidato = segmentosVacios * tamanoSegmento;
+            if(tamanoCandidato < bestSize && tamanoCandidato > tamanoContenido){
+                bestSize = tamanoCandidato;
+                bestSegment = candidato;
+            }         
+            
+            
+            access.close();
+     
+             if(bestSegment != -1){
+                return bestSegment + 1;
+            }
+            return -1;
+        } catch (FileNotFoundException ex) {
+            System.out.println(ex);
+            return -1;
+        } catch (IOException ex) {
+            System.out.println(ex);
+            return -1;
+        }
+    }
+    
+    private boolean writeDisk(int pos,int segmentoActual, String contenido){
+        
+        File file = new File("C:\\Users\\jruiz\\Desktop\\"+ getClientRoot(pos).getId()+ ".txt");
+        RandomAccessFile access;
+        String disk;
+        try {
+            access = new RandomAccessFile(file, "rw");
+            disk = access.readLine();
+            
+            String diskSegments[] = disk.split("-");
+            int totalSegmentos = diskSegments.length;
+            int tamanoSegmento = diskSegments[0].length();
+            int segmentosRestantes = totalSegmentos - (segmentoActual - 1);
+            final int totalDisk = disk.length();
+
+
+            int availableDisk = (segmentosRestantes * tamanoSegmento);
+
+            int segmentOffset = ((segmentoActual-1) * tamanoSegmento) + (segmentoActual-1);
+            int actualOffset = segmentOffset;
+            int fileOffset = 0;
+            
+            if( contenido.length() <= availableDisk ){
+                for (int i = 0; fileOffset < contenido.length(); i++) {
+                
+                actualOffset = segmentOffset + i;
+                if(actualOffset < totalDisk ){
+                    access.seek(actualOffset);
+                    if(disk.charAt(actualOffset)!='-'){
+                        access.writeBytes(""+contenido.charAt(fileOffset));
+                        fileOffset++;
+                    }
+                }
+
+                }
+                access.close();
+                return true;
+            }else{
+                access.close();
+                return false;
+            }        
+            
+        } catch (FileNotFoundException ex) {
+            System.out.println(ex);
+            return false;
+        } catch (IOException ex) {
+            System.out.println(ex);
+            return false;
+        }
+           
+        
+    }
+    
+    private String readFileContent(int pos, int fileSegment, int fileSize){
+        File file = new File("C:\\Users\\jruiz\\Desktop\\"+ getClientRoot(pos).getId()+ ".txt");
+        RandomAccessFile access;
+        String disk;
+        fileSegment--;
+        try {
+            access = new RandomAccessFile(file, "r");
+            disk = access.readLine();
+            
+            String diskSegments[] = disk.split("-");
+            int tamanoSegmento = diskSegments[0].length();
+            String fileContent = "";
+            int charsLeidos = 0;
+            int segmentosLeidos = 0;
+            int charSegment = 0;
+            while(charsLeidos < fileSize){
+                if(charSegment < tamanoSegmento){
+                    fileContent += diskSegments[fileSegment+segmentosLeidos].charAt(charSegment);
+                    charSegment++;
+                    charsLeidos++;
+                }else{
+                    charSegment = 0;
+                    segmentosLeidos++;
+                    
+                }
+            }
+            access.close();
+            return fileContent;
+            
+        } catch (FileNotFoundException ex) {
+            System.out.println(ex);
+            return null;
+        } catch (IOException ex) {
+            System.out.println(ex);
+            return null;
+        }
+        
+    }
+    
  
     //************OPERACIONES*/
     
@@ -133,7 +294,7 @@ public class FSWebService {
     @WebMethod(operationName = "CRT")
     public int CRT(int sectores,int tamsec, String nombreraiz) throws IOException, Exception {
         
-        String rutaFile = "C:\\Users\\jruiz\\Desktop\\"+nombreraiz + ".txt";
+        String rutaFile = DISK_PATH +nombreraiz + ".txt";
         File archivo = new File(rutaFile);
         BufferedWriter bw;
         
@@ -163,13 +324,23 @@ public class FSWebService {
     
     
     @WebMethod(operationName = "FLE")
-    public void FLE(int pos, String contenido, String nombre, String extension){
-       Node parent = findRouteNode(pos);
-       Node archivo = new Node(nombre);
-       parent.addChild(archivo);
-       archivo.setExtension(extension);
-       archivo.setFile(true);
-       //TODO agregar contenido
+    public String FLE(int pos, String contenido, String nombre, String extension){
+       
+        int bestFitSegment = bestFit(pos,contenido.length());
+        if(bestFitSegment != -1 ){
+            Node parent = findRouteNode(pos);
+            Node archivo = new Node(nombre);
+            parent.addChild(archivo);
+            archivo.setExtension(extension);
+            archivo.setFile(true);
+            archivo.setLenght(contenido.length());
+            archivo.setPosition(bestFitSegment);
+            writeDisk(pos,bestFitSegment,contenido);
+            return "Archivo creado";
+        }else{
+            return "No hay espacio en disco";
+        }
+        
     }
     
     @WebMethod(operationName = "MKDIR")
@@ -196,7 +367,9 @@ public class FSWebService {
     
     @WebMethod(operationName = "MFLE")
     public void MFLE(String nombrearchivo, String nuevocontenido){
-    
+        //ver si queda espacio en los sectores que tiene el file,
+        //si no alcanza llamar a bestFit , luego a writeFile y de ultimo
+        //borrar el contenido de la ubicacion anterior
     }
     
     
@@ -212,31 +385,44 @@ public class FSWebService {
     }
     
     @WebMethod(operationName = "VIEW")
-    public void VIEW(String nombrearchivo){
-    
+    public String VIEW(int pos, String nombrearchivo){
+        addPath(pos, nombrearchivo);
+        System.out.println(getPath(pos));
+        Node archivo = findRouteNode(pos);
+        
+        String content = readFileContent(pos,archivo.getPosition(),archivo.getLenght());
+        deletePath(pos);
+        return content;
     }
     
      @WebMethod(operationName = "CPY")
     public void CPY(String nombrearchivo){
-    
+        //virtual - real
+        //real - virtual
+        // virtual - vitual
+        //?
     }
    
     @WebMethod(operationName = "MOV")
     public void MOV(String nombrearchivo, String nuevaruta){
-    
+        //mover el nodo nombrearchivo de un padre a otro
     }
     
     @WebMethod(operationName = "REM")
-    public void REM(String nombrearchivo){
-    
+    public void REM(int pos, String nombrearchivo){
+        Node parent = findRouteNode(pos);
+        parent.deleteChild(nombrearchivo);
+        //si child es un file, hay que borrar el contenido del disco
     }
     
      @WebMethod(operationName = "TREE")
     public String TREE(int pos){
         return getClientRoot(pos).printTree("-");
     }
-    
-       
+    @WebMethod(operationName = "PATH")   
+    public String path(int pos){
+        return getPath(pos);
+    }
     
     
 }

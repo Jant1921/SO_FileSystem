@@ -131,4 +131,23 @@ class Node {
         return propiedades;
     }
     
+    public int childIndex(String nombre){
+        List<Node> hijos = this.getChildren();
+        for (int i = 0; i < hijos.size(); i++) {
+            if(hijos.get(i).getId().equals(nombre)){
+                return i;
+            }
+        }
+        return -1;
+    }
+    
+    public void deleteChild(String nombre){
+        int childIndex = childIndex(nombre);
+        if( 0 <= childIndex &&  childIndex < getChildren().size()){
+            getChildren().remove(childIndex);
+        }
+        
+        return;
+    }
+    
 }
