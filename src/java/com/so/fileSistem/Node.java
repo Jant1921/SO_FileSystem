@@ -31,6 +31,24 @@ class Node {
         fechaCreacion = new Date();
         fechaModificacion = fechaCreacion;
     }
+
+    public Date getFechaCreacion() {
+        return fechaCreacion;
+    }
+
+    public void setFechaCreacion(Date fechaCreacion) {
+        this.fechaCreacion = fechaCreacion;
+    }
+
+    public Date getFechaModificacion() {
+        return fechaModificacion;
+    }
+
+    public void setFechaModificacion(Date fechaModificacion) {
+        this.fechaModificacion = fechaModificacion;
+    }
+    
+    
     
     private void updateDate(){
         fechaModificacion = new Date();
@@ -127,7 +145,9 @@ class Node {
         }
         propiedades += "Fecha Creacion: " + this.fechaCreacion +'\n' + 
                 "Fecha Modificación: "+ this.fechaModificacion + '\n' +
-                "Tamaño " + this.lenght + '\n';
+                "Tamaño: " + this.lenght + '\n'+
+                "Padre: "+ this.parent.getId()+'\n'+
+                "Sector: "+this.getPosition()+'\n';
         return propiedades;
     }
     
